@@ -1,0 +1,6 @@
+{
+  "appId": "com.shahdigital.taskpro",
+  "appName": "SDMA TaskPro",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
