@@ -1,6 +1,6 @@
 # SDMA TaskPro - REST API Blueprint Documentation
 
-This document outlines the RESTful API contract for the **SDMA TaskPro (Agency OS)**. These blueprints serve as a reference for backend engineers developing production-ready APIs with **Laravel 12** or **Node.js (NestJS)** and **PostgreSQL**.
+This document records the current Supabase Auth integration and the proposed data API contract for **SDMA TaskPro (Agency OS)**. Resource endpoints below remain a future API blueprint unless a matching Supabase client integration exists in the app.
 
 ---
 
@@ -9,44 +9,33 @@ This document outlines the RESTful API contract for the **SDMA TaskPro (Agency O
 
 ---
 
-## 1. Authentication Service (`/auth`)
+## 1. Authentication Service (Implemented with Supabase Auth)
 
-### 1.1 User Login
-* **Method:** `POST`
-* **Path:** `/auth/login`
-* **Headers:** `Content-Type: application/json`
-* **Request Body:**
-```json
-{
-  "email": "admin@shahdigital.com",
-  "password": "password"
-}
-```
-* **Success Response (200 OK):**
-```json
-{
-  "status": "success",
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": "u-1",
-      "name": "Salahudheen PP",
-      "email": "admin@shahdigital.com",
-      "role": "CEO",
-      "department": "Management"
-    }
-  }
-}
-```
-* **Failure Response (401 Unauthorized):**
-```json
-{
-  "status": "error",
-  "message": "Invalid email or password credentials."
-}
-```
+**Runtime provider:** Supabase Auth at `https://ekkpnoidcdpsxkwrvshy.supabase.co`.
 
----
+The frontend uses the pinned `@supabase/supabase-js@2.119.0` browser SDK:
+
+- Login: `supabase.auth.signInWithPassword({ email, password })`
+- Session restore: `supabase.auth.getUser()` (server-validated identity)
+- Session events: `supabase.auth.onAuthStateChange()`
+- Password change: `supabase.auth.updateUser({ password })`
+- Logout: `supabase.auth.signOut({ scope: "local" })`
+
+The SDK persists and refreshes its session and automatically attaches the current access token to Supabase Data API requests. There is no custom `POST /v1/auth/login` server in this repository; the earlier JWT response example was a proposed API contract only.
+
+The browser contains only the project's **publishable** key. Never use a service-role or secret key in frontend code.
+
+Employee identity and roles come from `public.profiles`, linked to `auth.users.id`. Database role mapping:
+
+| Database role | TaskPro UI role |
+|---|---|
+| `admin` | CEO |
+| `manager` | Team Lead |
+| `staff` | Digital Marketer / Designer / HR, using `profiles.designation` |
+
+PostgreSQL RLS policies are the security boundary; UI checks only control navigation. New Auth users receive an inactive default `staff` profile from the database trigger. The `invite-employee` Edge Function accepts an active administrator JWT, uses a server-side secret to send Auth invitations, assigns a non-admin database role, and activates the employee profile. Admin elevation remains a separate owner-controlled operation.
+
+**Migration status:** Authentication and profile bootstrap are connected. Several operational collections in the UI still use localStorage/default data and must be migrated to their matching Supabase tables before those modules can be treated as production-protected. See `docs/PRODUCTION_AUTH.md`.
 
 ## 2. Client & Project Folders Service (`/clients`)
 
