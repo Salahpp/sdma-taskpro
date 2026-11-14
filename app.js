@@ -2554,16 +2554,10 @@ function App() {
                         {(isPrivileged() || u.id === currentUser.id) && (
                           <div className="flex justify-between">
                             <span className="text-neutral-500">Base Salary:</span>
-                            <span className="font-semibold text-[#E31E24] font-mono">₹{(u.baseSalary || 3000).toLocaleString()}/mo</span>
+                            <span className="font-semibold text-[#E31E24] font-mono">₹{u.baseSalary > 0 ? u.baseSalary.toLocaleString() : "Not configured"}/mo</span>
                           </div>
                         )}
-                        {(isPrivileged() || u.id === currentUser.id) && (
-                          <div className="flex justify-between border-t border-neutral-850/50 pt-2 mt-2">
-                            <span className="text-neutral-500">Login Password:</span>
-                            <span className="font-semibold text-slate-400 font-mono select-all bg-[#1C1C1E] px-2 py-0.5 rounded border border-neutral-800">{u.password}</span>
-                          </div>
-                        )}
-                      </div>
+</div>
                     </div>
 
                     {isRole(["CEO"]) && (
