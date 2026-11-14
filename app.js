@@ -508,26 +508,31 @@ function App() {
     setClientForm({ companyName: "", contactPerson: "", phone: "", email: "", website: "", address: "", monthlyPackage: "", assignedStaff: "", startDate: "", status: "Active", notes: "" });
   };
 
-  // Employee creation is performed through trusted Supabase Auth administration.
+  // Employee accounts are invited by an authenticated Edge Function. The service key never reaches this browser.
   const handleStaffSubmit = async (e) => {
     e.preventDefault();
-    if (!editingStaff) {
-      showToast("Create or invite this employee in Supabase Authentication first. Their Staff profile is created automatically.", "warning");
-      return;
-    }
     try {
-      const updated = await window.SDMAAuth.updateProfile(editingStaff.id, staffForm);
-      const merged = { ...updated, baseSalary: parseInt(staffForm.baseSalary, 10) || editingStaff.baseSalary || 0 };
-      setUsers(users.map(u => u.id === editingStaff.id ? merged : u));
-      if (editingStaff.id === currentUser.id) setCurrentUser(merged);
-      showToast("Employee profile updated successfully!");
+      if (editingStaff) {
+        const updated = await window.SDMAAuth.updateProfile(editingStaff.id, staffForm);
+        const merged = { ...updated, baseSalary: parseInt(staffForm.baseSalary, 10) || editingStaff.baseSalary || 0 };
+        setUsers(users.map(u => u.id === editingStaff.id ? merged : u));
+        if (editingStaff.id === currentUser.id) setCurrentUser(merged);
+        showToast("Employee profile updated successfully!");
+      } else {
+        const invited = await window.SDMAAuth.inviteEmployee(staffForm);
+        const context = await window.SDMAAuth.getCurrentContext();
+        if (context) {
+          setUsers(context.users);
+          setCurrentUser(context.user);
+        }
+        showToast(`Invitation sent to ${invited.email}.`);
+      }
       setShowStaffModal(false);
       setEditingStaff(null);
     } catch (error) {
-      showToast(error.message || "Could not update employee profile.", "error");
+      showToast(error.message || "Could not save employee details.", "error");
     }
   };
-
   const handleStaffDelete = async (id, name) => {
     if (!confirm(`Deactivate ${name}'s employee account? Their access to RLS-protected data will be blocked.`)) return;
     try {
@@ -4003,10 +4008,10 @@ function App() {
                     value={staffForm.role}
                     onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
                   >
-                    <option value="CEO">CEO (Admin)</option>
                     <option value="Team_Lead">Team Lead</option>
                     <option value="Digital_Marketer">Digital Marketer</option>
                     <option value="Designer">Graphic Designer</option>
+                    <option value="HR">HR (Staff)</option>
                   </select>
                 </div>
 
