@@ -33,7 +33,7 @@ Employee identity and roles come from `public.profiles`, linked to `auth.users.i
 | `manager` | Team Lead |
 | `staff` | Digital Marketer / Designer |
 
-PostgreSQL RLS policies are the security boundary; UI checks only control navigation. New Auth users receive an inactive default `staff` profile from the database trigger. Administrators must activate verified employees; role elevation is administrator-controlled.
+PostgreSQL RLS policies are the security boundary; UI checks only control navigation. New Auth users receive an inactive default `staff` profile from the database trigger. The `invite-employee` Edge Function accepts an active administrator JWT, uses a server-side secret to send Auth invitations, assigns a non-admin database role, and activates the employee profile. Admin elevation remains a separate owner-controlled operation.
 
 **Migration status:** Authentication and profile bootstrap are connected. Several operational collections in the UI still use localStorage/default data and must be migrated to their matching Supabase tables before those modules can be treated as production-protected. See `docs/PRODUCTION_AUTH.md`.
 
