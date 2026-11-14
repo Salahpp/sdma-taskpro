@@ -805,7 +805,13 @@
             const updated = await window.SDMAAuth.updateProfile(editingStaff.id, staffForm);
             const merged = updated;
             setUsers(users.map(u => u.id === editingStaff.id ? merged : u));
-            if (editingStaff.id === currentUser.id) setCurrentUser(merged);
+            if (editingStaff.id === currentUser.id) {
+          if (merged.status !== "Active") {
+            await handleLogout();
+          } else {
+            setCurrentUser(merged);
+          }
+        }
             showToast("Employee profile updated successfully!");
           } else {
             const invited = await window.SDMAAuth.inviteEmployee(staffForm);
@@ -4403,7 +4409,8 @@
                         value={staffForm.role}
                         onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
                       >
-                        <option value="Team_Lead">Team Lead</option>
+                        <option value="CEO" disabled>CEO (Owner managed)</option>
+<option value="Team_Lead">Team Lead</option>
                         <option value="Digital_Marketer">Digital Marketer</option>
                         <option value="Designer">Graphic Designer</option>
                     <option value="HR">HR (Staff)</option>
