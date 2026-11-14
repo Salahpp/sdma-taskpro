@@ -2,18 +2,23 @@
 (function () {
   "use strict";
   const client = window.SDMA_SUPABASE;
-  const PROFILE_COLUMNS = "id,org_id,full_name,email,role,department,active";
+  const PROFILE_COLUMNS = "id,org_id,full_name,email,role,designation,department,active";
   const DB_TO_APP_ROLE = { admin: "CEO", manager: "Team_Lead", staff: "Digital_Marketer" };
   const APP_TO_DB_ROLE = { CEO: "admin", Team_Lead: "manager", Digital_Marketer: "staff", Designer: "staff", HR: "staff" };
 
   function mapProfile(profile) {
     const name = profile.full_name || profile.email || "Employee";
     const avatar = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join("").toUpperCase();
+    const role = profile.role === "admin"
+      ? "CEO"
+      : profile.role === "manager"
+        ? "Team_Lead"
+        : (["Designer", "HR"].includes(profile.designation) ? profile.designation : "Digital_Marketer");
     return {
       id: profile.id,
       name,
       email: profile.email || "",
-      role: DB_TO_APP_ROLE[profile.role] || "Digital_Marketer",
+      role,
       authRole: profile.role,
       department: profile.department || "General",
       avatar: avatar || "ST",
@@ -92,12 +97,28 @@
     return true;
   }
 
+  async function inviteEmployee(employee) {
+    if (!client) throw new Error("Supabase is not configured.");
+    const { data, error } = await client.functions.invoke("invite-employee", {
+      body: {
+        email: String(employee.email || "").trim().toLowerCase(),
+        full_name: String(employee.name || "").trim(),
+        department: String(employee.department || "General").trim(),
+        role: String(employee.role || "Digital_Marketer")
+      }
+    });
+    if (error) throw new Error(error.message || "Could not send employee invitation.");
+    if (!data || !data.success) throw new Error(data?.error || "Could not send employee invitation.");
+    return data.employee;
+  }
+
   async function updateProfile(id, updates) {
     if (!client) throw new Error("Supabase is not configured.");
     const payload = {
       full_name: String(updates.name || "").trim(),
       department: String(updates.department || "General").trim(),
       role: APP_TO_DB_ROLE[updates.role || "Digital_Marketer"] || "staff",
+      designation: ["Designer", "HR", "Team_Lead"].includes(updates.role) ? updates.role : (updates.role === "CEO" ? "CEO" : "Digital_Marketer"),
       active: updates.status === "Active"
     };
     const { data, error } = await client.from("profiles").update(payload).eq("id", id).select(PROFILE_COLUMNS).single();
@@ -113,6 +134,7 @@
     signOut,
     onAuthStateChange,
     changePassword,
+    inviteEmployee,
     updateProfile
   };
 })();
