@@ -3,7 +3,6 @@
   "use strict";
   const client = window.SDMA_SUPABASE;
   const PROFILE_COLUMNS = "id,org_id,full_name,email,role,designation,department,active";
-  const DB_TO_APP_ROLE = { admin: "CEO", manager: "Team_Lead", staff: "Digital_Marketer" };
   const APP_TO_DB_ROLE = { CEO: "admin", Team_Lead: "manager", Digital_Marketer: "staff", Designer: "staff", HR: "staff" };
 
   function mapProfile(profile) {
