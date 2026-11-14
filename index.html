@@ -3401,11 +3401,12 @@
                           });
     
                           // Payroll calculations
-                          const baseSalary = u.baseSalary || 3000;
-                          const hourlyRate = baseSalary / 160; // 160 standard hours / month
-                          const lateDeduction = latesCount * 15;
-                          const overtimePay = parseFloat((overtimeHours * hourlyRate * 1.5).toFixed(2));
-                          const netPayout = parseFloat((baseSalary - lateDeduction + overtimePay).toFixed(2));
+                          const baseSalary = Number(u.baseSalary) || 0;
+                      const salaryConfigured = baseSalary > 0;
+                          const hourlyRate = salaryConfigured ? baseSalary / 160 : 0; // 160 standard hours / month
+                          const lateDeduction = salaryConfigured ? latesCount * 15 : 0;
+                          const overtimePay = salaryConfigured ? parseFloat((overtimeHours * hourlyRate * 1.5).toFixed(2)) : 0;
+                          const netPayout = salaryConfigured ? parseFloat((baseSalary - lateDeduction + overtimePay).toFixed(2)) : 0;
     
                           return (
                             <tr key={u.id} className="hover:bg-neutral-900/20">
@@ -3418,7 +3419,7 @@
                                   <p className="text-[9px] text-neutral-500 uppercase">{u.role.replace("_", " ")}</p>
                                 </div>
                               </td>
-                              <td className="py-4 px-4 font-mono font-bold">₹{baseSalary.toLocaleString()}</td>
+                              <td className="py-4 px-4 font-mono font-bold">{salaryConfigured ? `₹${baseSalary.toLocaleString()}` : "Not configured"}</td>
                               <td className="py-4 px-4 text-center font-bold">{daysPresent}</td>
                               <td className="py-4 px-4 text-center text-amber-500 font-bold">{latesCount}</td>
                               <td className="py-4 px-4 text-center text-blue-400 font-bold">{leavesApproved}</td>
