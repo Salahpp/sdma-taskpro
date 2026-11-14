@@ -30,13 +30,14 @@ The existing PostgreSQL RLS policies and `private.auth_org()`, `private.auth_rol
 ## One-time owner bootstrap
 
 1. In Supabase Dashboard → Authentication → Users, create or invite the real owner account. Do not reuse the former demo credentials.
-2. The database trigger creates a default Staff profile.
+2. The database trigger creates an inactive Staff profile.
 3. In Supabase SQL Editor, replace the placeholder email and run:
 
 ```sql
 update public.profiles p
 set role = 'admin',
     department = 'Management',
+    active = true,
     updated_at = now()
 from auth.users u
 where p.id = u.id
@@ -44,7 +45,7 @@ where p.id = u.id
 ```
 
 4. Confirm exactly the expected profile was updated and test the admin login.
-5. Create or invite employees in Supabase Auth. They start as Staff; an administrator can later change their profile role in TaskPro.
+5. Create or invite employees in Supabase Auth. Their Staff profiles start inactive. While signed in as admin, activate the employee in the Staff screen (and assign manager only when appropriate). The public Auth self-signup setting should also be disabled for an invitation-only employee portal.
 
 Disable public self-sign-up in Supabase Auth settings when accounts should be invitation-only.
 
