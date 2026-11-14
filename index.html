@@ -2884,16 +2884,10 @@
                             {(isPrivileged() || u.id === currentUser.id) && (
                               <div className="flex justify-between">
                                 <span className="text-neutral-500">Base Salary:</span>
-                                <span className="font-semibold text-[#E31E24] font-mono">₹{(u.baseSalary || 3000).toLocaleString()}/mo</span>
+                                <span className="font-semibold text-[#E31E24] font-mono">₹{u.baseSalary > 0 ? u.baseSalary.toLocaleString() : "Not configured"}/mo</span>
                               </div>
                             )}
-                            {(isPrivileged() || u.id === currentUser.id) && (
-                              <div className="flex justify-between border-t border-neutral-850/50 pt-2 mt-2">
-                                <span className="text-neutral-500">Login Password:</span>
-                                <span className="font-semibold text-slate-400 font-mono select-all bg-neutral-900 px-2 py-0.5 rounded border border-neutral-800">{u.password}</span>
-                              </div>
-                            )}
-                          </div>
+</div>
                         </div>
     
                         {isRole(["CEO"]) && (
@@ -3835,7 +3829,7 @@
                                   <h4 className="font-bold text-slate-200">{u.name}</h4>
                                   <span className="text-[8px] uppercase font-bold text-neutral-500 bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800">{u.role.replace("_", " ")}</span>
                                 </div>
-                                <p className="text-[10px] text-neutral-400 mt-0.5">{u.email} | Pass: <span className="font-mono text-neutral-300 font-bold bg-[#1C1C1E] px-1.5 py-0.5 rounded border border-neutral-800">{u.password}</span></p>
+                                <p className="text-[10px] text-neutral-400 mt-0.5">{u.email}</p>
                               </div>
                             </div>
     
@@ -3846,7 +3840,7 @@
                                   setStaffForm({
                                     name: u.name,
                                     email: u.email,
-                                    password: u.password,
+
                                     role: u.role,
                                     department: u.department,
                                     avatar: u.avatar,
