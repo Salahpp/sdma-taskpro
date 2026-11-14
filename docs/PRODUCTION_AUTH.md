@@ -23,9 +23,9 @@ New accounts are always assigned `role = 'staff'`; client-supplied user metadata
 |---|---|
 | `admin` | CEO |
 | `manager` | Team Lead |
-| `staff` | Digital Marketer / Designer |
+| `staff` | Digital Marketer / Designer / HR (display designation) |
 
-The existing PostgreSQL RLS policies and `private.auth_org()`, `private.auth_role()`, `private.is_admin()`, and `private.is_manager()` helpers are the authorization boundary. UI checks only control navigation.
+The `designation` profile field preserves TaskPro's staff display type (Digital Marketer, Designer, or HR); it does not grant permissions. The database `role` field is the authority. Existing PostgreSQL RLS policies and `private.auth_org()`, `private.auth_role()`, `private.is_admin()`, and `private.is_manager()` helpers enforce access. UI checks only control navigation.
 
 ## One-time owner bootstrap
 
@@ -45,9 +45,8 @@ where p.id = u.id
 ```
 
 4. Confirm exactly the expected profile was updated and test the admin login.
-5. Invite employees from TaskPro → Staff. The Edge Function verifies the active admin session, sends the Auth invitation, assigns only a permitted non-admin role, and activates the profile. Disable public Auth self-signup for an invitation-only employee portal.
-
-Disable public self-sign-up in Supabase Auth settings when accounts should be invitation-only.
+5. In Supabase Auth → URL Configuration, set the deployed TaskPro URL as the Site URL and add the matching redirect URL. Configure SMTP so employee invitations can be delivered reliably.
+6. Invite employees from TaskPro → Staff. The Edge Function verifies the active admin session, sends the Auth invitation, assigns only a permitted non-admin role, and activates the profile. Disable public Auth self-signup for an invitation-only employee portal.
 
 ## Important remaining work
 
