@@ -3,15 +3,7 @@
 const { useState, useEffect, useMemo } = React;
 
 // --- MOCK DATABASE SEED DATA ---
-const DEFAULT_USERS = [
-  { id: "u-1", name: "Salahudheen PP", email: "admin@shahdigital.com", password: "password", role: "CEO", avatar: "SP", status: "Active", department: "Management", baseSalary: 120000 },
-  { id: "u-2", name: "MUHAMMED RAZAL NM", email: "razalmaliyandigital@gmail.com", password: "password", role: "Team_Lead", avatar: "RL", status: "Active", department: "Digital Marketing", baseSalary: 55000 },
-  { id: "u-3", name: "Fathima Shahana", email: "fathima09713@gmail.com", password: "password", role: "Digital_Marketer", avatar: "SH", status: "Active", department: "Digital Marketing", baseSalary: 32000 },
-  { id: "u-4", name: "Farisa Beevi", email: "farisabeevi@shahdigital.com", password: "password", role: "Digital_Marketer", avatar: "FB", status: "Active", department: "Digital Marketing", baseSalary: 32000 },
-  { id: "u-5", name: "Salman Fariz", email: "salmanfariz@shahdigital.com", password: "password", role: "Digital_Marketer", avatar: "SF", status: "Active", department: "Digital Marketing", baseSalary: 32000 },
-  { id: "u-6", name: "Rubin Ep", email: "rubinrubinep@gmail.com", password: "password", role: "Designer", avatar: "RB", status: "Active", department: "Design & Creative", baseSalary: 30000 },
-  { id: "u-7", name: "Shifna", email: "shifna.binthfiroz@gmail.com", password: "password", role: "Digital_Marketer", avatar: "SF", status: "Active", department: "HR", baseSalary: 28000 }
-];
+const DEFAULT_USERS = [];
 
 const DEFAULT_LEAVE_TEMPLATES = [
   { id: "lt-1", type: "Paid Leave (PL)", allowance: 15, color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
@@ -183,10 +175,8 @@ function Icon({ name, className = "w-5 h-5", onClick = null }) {
 // --- MAIN REACT COMPONENT ---
 function App() {
   // Authentication & Session
-  const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem("sdma_current_user");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [authError, setAuthError] = useState("");
@@ -201,7 +191,7 @@ function App() {
   });
 
   // DB States
-  const [users, setUsers] = useState(() => getLS("sdma_users", DEFAULT_USERS));
+  const [users, setUsers] = useState([]);
   const [clients, setClients] = useState(() => getLS("sdma_clients", DEFAULT_CLIENTS));
   const [projects, setProjects] = useState(() => getLS("sdma_projects", DEFAULT_PROJECTS));
   const [tasks, setTasks] = useState(() => getLS("sdma_tasks", DEFAULT_TASKS));
@@ -248,7 +238,7 @@ function App() {
 
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
-  const [staffForm, setStaffForm] = useState({ name: "", email: "", password: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active" });
+  const [staffForm, setStaffForm] = useState({ name: "", email: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active" });
 
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [projectForm, setProjectForm] = useState({ name: "", clientId: "", description: "", status: "Active" });
@@ -280,16 +270,72 @@ function App() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordsForm, setPasswordsForm] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
 
-  // Sync to localStorage
-  // Database Migration Check (To automatically load spreadsheet seeds)
+  // Remove former client-side demo identity. Supabase Auth now owns the session.
   useEffect(() => {
-    const storedUsers = localStorage.getItem("sdma_users");
-    if (storedUsers && storedUsers.includes("Shah Rukh")) {
-      // Found old database data. Wipe and reload new default seeds.
-      localStorage.clear();
-      window.location.reload();
-    }
+    localStorage.removeItem("sdma_current_user");
+    localStorage.removeItem("sdma_users");
   }, []);
+
+  const applyAuthContext = (context) => {
+    setCurrentUser(context ? context.user : null);
+    setUsers(context ? context.users : []);
+    setAuthReady(true);
+    if (context) setAuthError("");
+  };
+
+  useEffect(() => {
+    let active = true;
+    const auth = window.SDMAAuth;
+
+    if (!auth || !auth.isConfigured) {
+      setAuthError("Supabase authentication is not configured. Contact your administrator.");
+      setAuthReady(true);
+      return () => { active = false; };
+    }
+
+    const hydrate = async (authUser) => {
+      if (!authUser) {
+        if (active) applyAuthContext(null);
+        return;
+      }
+      try {
+        const context = await auth.getSessionContext(authUser);
+        if (active) applyAuthContext(context);
+      } catch (error) {
+        await auth.signOut().catch(() => {});
+        if (active) {
+          setAuthError(error.message || "Could not verify your employee profile.");
+          applyAuthContext(null);
+        }
+      }
+    };
+
+    const { data: { subscription } } = auth.onAuthStateChange((event, authUser) => {
+      if (!active) return;
+      if (event === "SIGNED_OUT" || !authUser) {
+        applyAuthContext(null);
+      } else {
+        window.setTimeout(() => { if (active) void hydrate(authUser); }, 0);
+      }
+    });
+
+    auth.getCurrentContext()
+      .then(context => { if (active) applyAuthContext(context); })
+      .catch(error => {
+        if (active) {
+          setAuthError(error.message || "Could not restore the secure session.");
+          applyAuthContext(null);
+        }
+        void auth.signOut().catch(() => {});
+      });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Sync to localStorage
 
   useEffect(() => { setLS("sdma_users", users); }, [users]);
   useEffect(() => { setLS("sdma_clients", clients); }, [clients]);
@@ -330,17 +376,7 @@ function App() {
     }
   }, [activeTab, currentUser]);
 
-  // Session Security: Verify currentUser details against database users list
-  useEffect(() => {
-    if (currentUser) {
-      const match = users.find(u => u.id === currentUser.id);
-      if (!match || match.email.toLowerCase() !== currentUser.email.toLowerCase() || match.password !== currentUser.password || match.role !== currentUser.role || match.status !== "Active") {
-        setCurrentUser(null);
-        localStorage.removeItem("sdma_current_user");
-        showToast("Session expired or credentials changed. Please log in again.");
-      }
-    }
-  }, [users, currentUser]);
+  // Supabase Auth validates identity; PostgreSQL RLS authorizes protected rows.
 
   // Live Database Synchronization Across Browser Tabs/Windows
   useEffect(() => {
@@ -393,40 +429,37 @@ function App() {
   // Role verification helper
   const isRole = (rolesArray) => currentUser && rolesArray.includes(currentUser.role);
 
-  // Check if user is in Management or HR department (privileged)
-  const isPrivileged = () => currentUser && (
-    currentUser.department === "Management" || 
-    currentUser.department === "HR" || 
-    currentUser.role === "CEO"
-  );
+  // Navigation convenience only. Actual access is enforced by database RLS.
+  const isPrivileged = () => !!currentUser && currentUser.authRole === "admin";
 
-  // Sign In Flow
-  const handleLogin = (e) => {
+  // Login is verified by Supabase Auth, not a local users array.
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const user = users.find(u => u.email.toLowerCase() === loginEmail.toLowerCase() && u.password === loginPassword);
-    if (user) {
-      setCurrentUser(user);
-      localStorage.setItem("sdma_current_user", JSON.stringify(user));
-      showToast(`Welcome back, ${user.name}! Successfully signed in as ${user.role}.`);
-      setAuthError("");
-    } else {
-      setAuthError("Invalid email or password. Please use admin@shahdigital.com / password.");
+    setAuthReady(false);
+    setAuthError("");
+    try {
+      const context = await window.SDMAAuth.signIn(loginEmail, loginPassword);
+      setCurrentUser(context.user);
+      setUsers(context.users);
+      setLoginPassword("");
+      showToast(`Welcome back, ${context.user.name}! Successfully signed in as ${context.user.role}.`);
+    } catch (error) {
+      setAuthError(error.message || "Unable to sign in. Please try again.");
+    } finally {
+      setAuthReady(true);
     }
   };
 
-  // Sign Out Flow
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem("sdma_current_user");
-    showToast("Signed out successfully.");
-  };
-
-  // Quick Account Picker
-  const quickPickUser = (role) => {
-    const match = users.find(u => u.role === role);
-    if (match) {
-      setLoginEmail(match.email);
-      setLoginPassword(match.password);
+  // End the current browser session through Supabase Auth.
+  const handleLogout = async () => {
+    try {
+      await window.SDMAAuth.signOut();
+    } catch (error) {
+      showToast(error.message || "Sign-out could not be confirmed.", "error");
+    } finally {
+      setCurrentUser(null);
+      setUsers([]);
+      showToast("Signed out successfully.");
     }
   };
 
@@ -477,69 +510,63 @@ function App() {
     setClientForm({ companyName: "", contactPerson: "", phone: "", email: "", website: "", address: "", monthlyPackage: "", assignedStaff: "", startDate: "", status: "Active", notes: "" });
   };
 
-  // Staff Submit Handler
-  const handleStaffSubmit = (e) => {
+  // Employee creation is performed through trusted Supabase Auth administration.
+  const handleStaffSubmit = async (e) => {
     e.preventDefault();
-    const avatarLetters = staffForm.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-    const formWithAvatar = { ...staffForm, avatar: avatarLetters || "ST", baseSalary: parseInt(staffForm.baseSalary) || 3000 };
-    
-    if (editingStaff) {
-      const updated = users.map(u => u.id === editingStaff.id ? { ...u, ...formWithAvatar } : u);
-      setUsers(updated);
-      if (editingStaff.id === currentUser.id) {
-        const updatedUser = { ...currentUser, ...formWithAvatar };
-        setCurrentUser(updatedUser);
-        localStorage.setItem("sdma_current_user", JSON.stringify(updatedUser));
-      }
-      showToast("Staff credentials updated successfully!");
-    } else {
-      const newUser = {
-        id: `u-${Date.now()}`,
-        ...formWithAvatar
-      };
-      setUsers([...users, newUser]);
-      showToast("New staff account created successfully!");
-    }
-    setShowStaffModal(false);
-    setEditingStaff(null);
-    setStaffForm({ name: "", email: "", password: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active", baseSalary: 3000 });
-  };
-
-  const handleStaffDelete = (id, name) => {
-    if (confirm(`Are you sure you want to delete staff account for "${name}"? They will lose access to SDMA TaskPro.`)) {
-      setUsers(users.filter(u => u.id !== id));
-      showToast(`Deleted staff account "${name}"`);
-    }
-  };
-
-  // Password Change Submission
-  const handlePasswordChange = (e) => {
-    e.preventDefault();
-    if (passwordsForm.oldPassword !== currentUser.password) {
-      showToast("Incorrect current password!", "error");
+    if (!editingStaff) {
+      showToast("Create or invite this employee in Supabase Authentication first. Their Staff profile is created automatically.", "warning");
       return;
     }
+    try {
+      const updated = await window.SDMAAuth.updateProfile(editingStaff.id, staffForm);
+      const merged = { ...updated, baseSalary: parseInt(staffForm.baseSalary, 10) || editingStaff.baseSalary || 0 };
+      setUsers(users.map(u => u.id === editingStaff.id ? merged : u));
+      if (editingStaff.id === currentUser.id) setCurrentUser(merged);
+      showToast("Employee profile updated successfully!");
+      setShowStaffModal(false);
+      setEditingStaff(null);
+    } catch (error) {
+      showToast(error.message || "Could not update employee profile.", "error");
+    }
+  };
+
+  const handleStaffDelete = async (id, name) => {
+    if (!confirm(`Deactivate ${name}'s employee account? Their access to RLS-protected data will be blocked.`)) return;
+    try {
+      const target = users.find(u => u.id === id);
+      const updated = await window.SDMAAuth.updateProfile(id, {
+        name: target ? target.name : name,
+        department: target ? target.department : "General",
+        role: target ? target.role : "Digital_Marketer",
+        status: "Inactive"
+      });
+      setUsers(users.map(u => u.id === id ? { ...updated, baseSalary: target ? target.baseSalary : 0 } : u));
+      if (currentUser && currentUser.id === id) await handleLogout();
+      showToast(`Deactivated employee account for ${name}.`);
+    } catch (error) {
+      showToast(error.message || "Could not deactivate employee.", "error");
+    }
+  };
+
+  // Supabase verifies the current password and stores the replacement.
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
     if (passwordsForm.newPassword !== passwordsForm.confirmPassword) {
       showToast("New passwords do not match!", "error");
       return;
     }
-    if (passwordsForm.newPassword.length < 4) {
-      showToast("Password must be at least 4 characters long!", "error");
+    if (passwordsForm.newPassword.length < 8) {
+      showToast("Use a password with at least 8 characters.", "error");
       return;
     }
-
-    // Update current user password
-    const updatedUser = { ...currentUser, password: passwordsForm.newPassword };
-    setCurrentUser(updatedUser);
-    localStorage.setItem("sdma_current_user", JSON.stringify(updatedUser));
-
-    // Update user in users list
-    const updatedUsersList = users.map(u => u.id === currentUser.id ? updatedUser : u);
-    setUsers(updatedUsersList);
-
-    showToast("Password updated successfully!");
-    setShowPasswordModal(false);
-    setPasswordsForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
+    try {
+      await window.SDMAAuth.changePassword(currentUser.email, passwordsForm.oldPassword, passwordsForm.newPassword);
+      showToast("Password updated successfully!");
+      setShowPasswordModal(false);
+      setPasswordsForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error) {
+      showToast(error.message || "Could not update password.", "error");
+    }
   };
 
   // Project Submit Handler
@@ -849,6 +876,14 @@ function App() {
   };
 
   // --- RENDERING VIEWS ---
+  if (!authReady) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0A0A0A] p-4">
+        <div className="text-center text-slate-400 text-sm">Checking secure employee session…</div>
+      </div>
+    );
+  }
+
   if (!currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0A0A0A] p-4">
@@ -895,24 +930,8 @@ function App() {
             </button>
           </form>
 
-          {/* Quick Account Switcher for Reviewers */}
-          <div className="mt-8 pt-6 border-t border-neutral-800/80">
-            <p className="text-center text-xs text-neutral-500 font-semibold mb-4 uppercase tracking-wider">Demo Account Switcher</p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button onClick={() => quickPickUser("CEO")} className="bg-[#1C1C1E] hover:bg-neutral-800 border border-neutral-800 text-slate-300 py-2 rounded-lg transition-all text-center">
-                🔑 CEO (Admin)
-              </button>
-              <button onClick={() => quickPickUser("Team_Lead")} className="bg-[#1C1C1E] hover:bg-neutral-800 border border-neutral-800 text-slate-300 py-2 rounded-lg transition-all text-center">
-                🔑 Team Lead
-              </button>
-              <button onClick={() => quickPickUser("Digital_Marketer")} className="bg-[#1C1C1E] hover:bg-neutral-800 border border-neutral-800 text-slate-300 py-2 rounded-lg transition-all text-center">
-                🔑 Marketer
-              </button>
-              <button onClick={() => quickPickUser("Designer")} className="bg-[#1C1C1E] hover:bg-neutral-800 border border-neutral-800 text-slate-300 py-2 rounded-lg transition-all text-center">
-                🔑 Graphic Designer
-              </button>
-            </div>
-            <p className="text-center text-[10px] text-neutral-500 mt-4 italic">Note: Use password "password" for any account</p>
+          <div className="mt-8 pt-6 border-t border-neutral-800/80 text-center text-xs text-neutral-500">
+            Employee accounts are provisioned by the Shah Digital Marketing administrator.
           </div>
         </div>
       </div>
@@ -2491,7 +2510,7 @@ function App() {
                   <button 
                     onClick={() => {
                       setEditingStaff(null);
-                      setStaffForm({ name: "", email: "", password: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active", baseSalary: 3000 });
+                      setStaffForm({ name: "", email: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active", baseSalary: 3000 });
                       setShowStaffModal(true);
                     }}
                     className="flex items-center gap-1.5 px-4 py-2 bg-[#E31E24] text-white text-xs font-bold rounded-xl hover:bg-[#C21319] transition-all shadow-md"
@@ -3969,20 +3988,14 @@ function App() {
                   className="w-full px-4 py-2 bg-[#1C1C1E] border border-neutral-800 rounded-xl text-white"
                   value={staffForm.email}
                   onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
+                  disabled={!!editingStaff}
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-neutral-500 uppercase tracking-wider mb-1 font-bold">Login Password</label>
-                <input 
-                  type="text" 
-                  className="w-full px-4 py-2 bg-[#1C1C1E] border border-neutral-800 rounded-xl text-white"
-                  value={staffForm.password}
-                  onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
-                  required
-                />
-              </div>
+              {!editingStaff && (
+                <p className="text-[11px] text-amber-300">Create the Auth account first in Supabase Dashboard. Its Staff profile is added automatically.</p>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -4024,7 +4037,7 @@ function App() {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-neutral-850">
-                <button type="button" onClick={() => { setShowStaffModal(false); setEditingStaff(null); setStaffForm({ name: "", email: "", password: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active", baseSalary: 3000 }); }} className="px-4 py-2 bg-neutral-900 text-slate-300 font-bold rounded-xl">Cancel</button>
+                <button type="button" onClick={() => { setShowStaffModal(false); setEditingStaff(null); setStaffForm({ name: "", email: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active", baseSalary: 3000 }); }} className="px-4 py-2 bg-neutral-900 text-slate-300 font-bold rounded-xl">Cancel</button>
                 <button type="submit" className="px-4 py-2 bg-[#E31E24] text-white font-bold rounded-xl shadow-md">{editingStaff ? "Save Account" : "Create Account"}</button>
               </div>
             </form>
