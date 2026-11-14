@@ -8,7 +8,7 @@
 
   function mapProfile(profile) {
     const name = profile.full_name || profile.email || "Employee";
-    const avatar = name.split(/\\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join("").toUpperCase();
+    const avatar = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join("").toUpperCase();
     return {
       id: profile.id,
       name,
