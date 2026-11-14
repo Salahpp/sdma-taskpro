@@ -385,7 +385,6 @@ function App() {
         const data = JSON.parse(e.newValue);
         switch (e.key) {
           case "sdma_tasks": setTasks(data); break;
-          case "sdma_users": setUsers(data); break;
           case "sdma_clients": setClients(data); break;
           case "sdma_projects": setProjects(data); break;
           case "sdma_campaigns": setCampaigns(data); break;
@@ -4224,7 +4223,7 @@ function App() {
                   className="w-full px-4 py-2 bg-[#1C1C1E] border border-neutral-800 rounded-xl text-white focus:outline-none"
                   value={passwordsForm.newPassword}
                   onChange={(e) => setPasswordsForm({ ...passwordsForm, newPassword: e.target.value })}
-                  placeholder="At least 4 chars"
+                  placeholder="At least 8 chars"
                   required
                 />
               </div>
