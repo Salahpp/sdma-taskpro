@@ -2,7 +2,7 @@
 
 ## Implemented authentication
 
-SDMA TaskPro now uses Supabase Auth for login and session restoration. The browser client in `js/supabase-client.js` contains only the project's **publishable** key. Never add a service-role or secret key to this repository or browser code.
+SDMA TaskPro now uses Supabase Auth for login and session restoration. The browser client in `js/supabase-client.js` contains only the project's **publishable** key. The `invite-employee` Edge Function uses the project's server-side secret key after verifying an active administrator. Never add a service-role or secret key to this repository or browser code.
 
 The app uses:
 - `supabase.auth.signInWithPassword({ email, password })` for login.
@@ -45,7 +45,7 @@ where p.id = u.id
 ```
 
 4. Confirm exactly the expected profile was updated and test the admin login.
-5. Create or invite employees in Supabase Auth. Their Staff profiles start inactive. While signed in as admin, activate the employee in the Staff screen (and assign manager only when appropriate). The public Auth self-signup setting should also be disabled for an invitation-only employee portal.
+5. Invite employees from TaskPro → Staff. The Edge Function verifies the active admin session, sends the Auth invitation, assigns only a permitted non-admin role, and activates the profile. Disable public Auth self-signup for an invitation-only employee portal.
 
 Disable public self-sign-up in Supabase Auth settings when accounts should be invitation-only.
 
