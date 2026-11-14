@@ -514,7 +514,7 @@ function App() {
     try {
       if (editingStaff) {
         const updated = await window.SDMAAuth.updateProfile(editingStaff.id, staffForm);
-        const merged = { ...updated, baseSalary: parseInt(staffForm.baseSalary, 10) || editingStaff.baseSalary || 0 };
+        const merged = updated;
         setUsers(users.map(u => u.id === editingStaff.id ? merged : u));
         if (editingStaff.id === currentUser.id) setCurrentUser(merged);
         showToast("Employee profile updated successfully!");
@@ -2513,7 +2513,7 @@ function App() {
                   <button 
                     onClick={() => {
                       setEditingStaff(null);
-                      setStaffForm({ name: "", email: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active", baseSalary: 3000 });
+                      setStaffForm({ name: "", email: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active" });
                       setShowStaffModal(true);
                     }}
                     className="flex items-center gap-1.5 px-4 py-2 bg-[#E31E24] text-white text-xs font-bold rounded-xl hover:bg-[#C21319] transition-all shadow-md"
@@ -4021,21 +4021,12 @@ function App() {
                   />
                 </div>
               </div>
-
-              <div>
-                <label className="block text-neutral-500 uppercase tracking-wider mb-1 font-bold">Base Monthly Salary ($)</label>
-                <input 
-                  type="number" 
-                  className="w-full px-4 py-2 bg-[#1C1C1E] border border-neutral-800 rounded-xl text-white font-mono"
-                  value={staffForm.baseSalary || ""}
-                  onChange={(e) => setStaffForm({ ...staffForm, baseSalary: e.target.value })}
-                  placeholder="e.g. 3000"
-                  required
-                />
+              <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-3 text-[10px] text-neutral-400">
+                Salary setup is handled in Payroll. Payroll data has not yet been migrated to Supabase in this branch.
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-neutral-850">
-                <button type="button" onClick={() => { setShowStaffModal(false); setEditingStaff(null); setStaffForm({ name: "", email: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active", baseSalary: 3000 }); }} className="px-4 py-2 bg-neutral-900 text-slate-300 font-bold rounded-xl">Cancel</button>
+                <button type="button" onClick={() => { setShowStaffModal(false); setEditingStaff(null); setStaffForm({ name: "", email: "", role: "Digital_Marketer", department: "Digital Marketing", avatar: "", status: "Active" }); }} className="px-4 py-2 bg-neutral-900 text-slate-300 font-bold rounded-xl">Cancel</button>
                 <button type="submit" className="px-4 py-2 bg-[#E31E24] text-white font-bold rounded-xl shadow-md">{editingStaff ? "Save Account" : "Create Account"}</button>
               </div>
             </form>
