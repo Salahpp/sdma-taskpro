@@ -337,7 +337,6 @@ function App() {
 
   // Sync to localStorage
 
-  useEffect(() => { setLS("sdma_users", users); }, [users]);
   useEffect(() => { setLS("sdma_clients", clients); }, [clients]);
   useEffect(() => { setLS("sdma_projects", projects); }, [projects]);
   useEffect(() => { setLS("sdma_tasks", tasks); }, [tasks]);
